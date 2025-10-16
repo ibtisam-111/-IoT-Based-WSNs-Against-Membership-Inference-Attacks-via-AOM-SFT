@@ -1,0 +1,86 @@
+import numpy as np
+from scipy import signal
+from sklearn.base import BaseEstimator, TransformerMixin
+
+class SFTProcessor(BaseEstimator, TransformerMixin):
+    def __init__(self, transformation_type='noise', sigma=0.1, filter_order=3, cutoff_freq=0.5):
+        self.transformation_type = transformation_type
+        self.sigma = sigma
+        self.filter_order = filter_order
+        self.cutoff_freq = cutoff_freq
+        self.feature_stds = None
+        
+    def fit(self, X, y=None):
+        if self.transformation_type == 'noise':
+            self.feature_stds = np.std(X, axis=0)
+        return self
+    
+    def transform(self, X):
+        if self.transformation_type == 'noise':
+            return self._apply_noise_injection(X)
+        elif self.transformation_type == 'smoothing':
+            return self._apply_feature_smoothing(X)
+        else:
+            raise ValueError("Transformation type must be 'noise' or 'smoothing'")
+    
+    def _apply_noise_injection(self, X):
+        if self.feature_stds is None:
+            self.feature_stds = np.std(X, axis=0)
+            
+        noise_scale = self.sigma * self.feature_stds
+        noise = np.random.normal(0, noise_scale, size=X.shape)
+        X_transformed = X + noise
+        
+        return X_transformed
+    
+    def _apply_feature_smoothing(self, X):
+        if len(X.shape) == 1:
+            X = X.reshape(1, -1)
+            
+        X_transformed = np.zeros_like(X)
+        
+        # Apply low-pass filter to each feature dimension
+        b, a = signal.butter(self.filter_order, self.cutoff_freq)
+        
+        for i in range(X.shape[1]):
+            feature_data = X[:, i]
+            if len(feature_data) > self.filter_order * 2:
+                try:
+                    smoothed = signal.filtfilt(b, a, feature_data)
+                    X_transformed[:, i] = smoothed
+                except:
+                    X_transformed[:, i] = feature_data
+            else:
+                X_transformed[:, i] = feature_data
+        
+        return X_transformed
+    
+    def set_parameters(self, sigma=None, cutoff_freq=None):
+        if sigma is not None:
+            self.sigma = sigma
+        if cutoff_freq is not None:
+            self.cutoff_freq = cutoff_freq
+    
+    def get_config(self):
+        return {
+            'transformation_type': self.transformation_type,
+            'sigma': self.sigma,
+            'filter_order': self.filter_order,
+            'cutoff_freq': self.cutoff_freq
+        }
+
+
+if __name__ == "__main__":
+    # Create sample data
+    X_sample = np.random.randn(100, 10)
+    
+    # Test noise injection
+    noise_processor = SFTProcessor(transformation_type='noise', sigma=0.1)
+    X_noisy = noise_processor.fit_transform(X_sample)
+    print(f"Original shape: {X_sample.shape}, Noisy shape: {X_noisy.shape}")
+    print(f"Noise added - Mean diff: {np.mean(X_noisy - X_sample):.4f}")
+    
+    # Test smoothing
+    smooth_processor = SFTProcessor(transformation_type='smoothing', cutoff_freq=0.3)
+    X_smooth = smooth_processor.fit_transform(X_sample)
+    print(f"Smoothed shape: {X_smooth.shape}")
