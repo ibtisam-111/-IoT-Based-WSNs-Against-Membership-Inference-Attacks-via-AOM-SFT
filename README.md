@@ -9,13 +9,13 @@ Adaptive Output Masking (AOM): Dynamic confidence-based masking of model predict
 Sensor Feature Transformation (SFT): Input-level transformation to obscure data uniqueness
 
 
-Installation
+#Installation
 git clone https://github.com/yourusername/Securing-IoT-WSNs-Against-MIA-AOM-SFT.git
 cd Securing-IoT-WSNs-Against-MIA-AOM-SFT
 pip install -r environment/requirements.txt
 
 
-Reproducing Results
+#Reproducing Results
 from src.models.model_architectures import MLP
 from src.defenses.aom_defense import AOMDefense
 from src.defenses.sft_transformation import SFTTransformer
